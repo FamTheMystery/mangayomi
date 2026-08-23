@@ -1,0 +1,73 @@
+name: Build Linux ARM64
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-linux-arm64:
+    runs-on: ubuntu-24.04-arm
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show system architecture
+        run: |
+          uname -a
+          uname -m
+          dpkg --print-architecture
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            webkit2gtk-4.1 \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            mpv \
+            libmpv-dev \
+            dpkg-dev \
+            libblkid-dev \
+            liblzma-dev \
+            libjpeg-dev \
+            libpng-dev \
+            libavif-dev \
+            libsecret-1-dev
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Show toolchain
+        run: |
+          flutter --version
+          rustc --version
+          cargo --version
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      - name: Build Linux ARM64
+        run: flutter build linux --release --verbose
+
+      - name: Verify architecture
+        run: |
+          file build/linux/arm64/release/bundle/mangayomi
+
+      - name: Create ZIP
+        run: |
+          cd build/linux/arm64/release
+          zip -r "Mangayomi-${{ github.sha }}-linux-arm64.zip" bundle
+
+      - name: Upload ARM64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mangayomi-linux-arm64
+          path: build/linux/arm64/release/Mangayomi-*-linux-arm64.zip
