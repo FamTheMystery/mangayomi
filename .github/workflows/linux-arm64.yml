@@ -5,22 +5,34 @@ on:
 
 jobs:
   build-linux-arm64:
+    name: Build Mangayomi for Linux ARM64
     runs-on: ubuntu-24.04-arm
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Show system architecture
+      - name: Show runner architecture
         run: |
+          echo "Kernel:"
           uname -a
+          echo
+          echo "Architecture:"
           uname -m
+          echo
+          echo "Debian architecture:"
           dpkg --print-architecture
 
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y \
+            curl \
+            git \
+            unzip \
+            zip \
+            wget \
+            file \
             webkit2gtk-4.1 \
             clang \
             cmake \
@@ -38,36 +50,117 @@ jobs:
             libsecret-1-dev
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          channel: stable
+        run: |
+          git clone https://github.com/flutter/flutter.git \
+            --depth 1 \
+            -b stable \
+            "$HOME/flutter"
+
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+          echo "$HOME/flutter/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+
+          "$HOME/flutter/bin/flutter" --version
+
+          "$HOME/flutter/bin/flutter" config --enable-linux-desktop
+
+          "$HOME/flutter/bin/flutter" precache --linux
+
+      - name: Verify Flutter
+        run: |
+          flutter --version
+          flutter doctor -v
 
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
 
-      - name: Show toolchain
+      - name: Verify Rust
         run: |
-          flutter --version
           rustc --version
           cargo --version
+          rustup show
 
       - name: Flutter pub get
-        run: flutter pub get
-
-      - name: Build Linux ARM64
-        run: flutter build linux --release --verbose
-
-      - name: Verify architecture
         run: |
-          file build/linux/arm64/release/bundle/mangayomi
+          flutter pub get
 
-      - name: Create ZIP
+      - name: Build Mangayomi
         run: |
-          cd build/linux/arm64/release
-          zip -r "Mangayomi-${{ github.sha }}-linux-arm64.zip" bundle
+          flutter build linux --release --verbose
+
+      - name: Find build output
+        run: |
+          echo "=== Linux build directories ==="
+          find build/linux -maxdepth 5 -type d -print || true
+
+          echo
+          echo "=== Executable files ==="
+          find build/linux -type f -executable -print || true
+
+          echo
+          echo "=== Mangayomi binaries ==="
+          find build/linux -type f -name mangayomi -exec file {} \; || true
+
+      - name: Locate Linux bundle
+        id: bundle
+        shell: bash
+        run: |
+          set -e
+
+          BUNDLE=$(find build/linux -type f -name mangayomi -print -quit)
+
+          if [ -z "$BUNDLE" ]; then
+            echo "ERROR: Could not find Mangayomi executable."
+            exit 1
+          fi
+
+          BUNDLE_DIR=$(dirname "$BUNDLE")
+
+          echo "Found executable:"
+          echo "$BUNDLE"
+
+          echo
+          echo "Bundle directory:"
+          echo "$BUNDLE_DIR"
+
+          echo "bundle_dir=$BUNDLE_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Verify ARM64 executable
+        run: |
+          BUNDLE="${{ steps.bundle.outputs.bundle_dir }}"
+
+          echo "Checking:"
+          echo "$BUNDLE/mangayomi"
+
+          file "$BUNDLE/mangayomi"
+
+          echo
+          echo "Expected architecture: ARM aarch64"
+
+      - name: Create ARM64 ZIP
+        shell: bash
+        run: |
+          set -e
+
+          BUNDLE="${{ steps.bundle.outputs.bundle_dir }}"
+
+          mkdir -p dist
+
+          cd "$BUNDLE"
+
+          zip -r \
+            "$GITHUB_WORKSPACE/dist/Mangayomi-${GITHUB_SHA}-linux-arm64.zip" \
+            .
+
+      - name: List final artifact
+        run: |
+          ls -lh dist/
+          file dist/*
 
       - name: Upload ARM64 artifact
         uses: actions/upload-artifact@v4
         with:
           name: Mangayomi-linux-arm64
-          path: build/linux/arm64/release/Mangayomi-*-linux-arm64.zip
+          path: dist/Mangayomi-*-linux-arm64.zip
+          if-no-files-found: error
