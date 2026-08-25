@@ -6,7 +6,7 @@ Status is intentionally conservative until the native CI job or Orange Pi valida
 |---|---:|---|---|
 | Flutter Linux engine | Yes | Supported by the configured Flutter target | Build on AArch64 |
 | `flutter_rust_bridge` / `rust_lib_mangayomi` | Yes | Rust target is present; runtime unverified | Build and inspect `.so` |
-| `isar_community_flutter_libs` | Yes | Published Linux asset is x86-64 | Build Isar Core 3.3.2 from source in ARM workflow |
+| `isar_community_flutter_libs` | Yes | Published Linux asset and loader are x86-64-only | Build Isar Core and patch the loader mapping in the ARM workflow |
 | `media_kit` / `media_kit_video` | Yes | Unknown for custom Git revision | Build and inspect backend |
 | `media_kit_libs_video` | Yes | Unknown for custom Git revision | Confirm mpv/FFmpeg ARM64 path |
 | `flutter_inappwebview` | Yes | System WebKitGTK path is expected | Install WebKitGTK and exercise lifecycle |

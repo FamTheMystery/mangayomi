@@ -13,6 +13,7 @@ command -v flutter >/dev/null || fail 'Flutter is required.'
 command -v cargo >/dev/null || fail 'Rust/Cargo is required.'
 command -v go >/dev/null || fail 'Go 1.25 or newer is required.'
 command -v git >/dev/null || fail 'Git is required to build Isar Core.'
+command -v perl >/dev/null || fail 'Perl is required to patch Isar ARM64 loading.'
 command -v dpkg-deb >/dev/null || fail 'dpkg-deb is required for Debian packaging.'
 
 host_arch="$(uname -m)"
@@ -42,6 +43,14 @@ isar_package="$(find "$HOME/.pub-cache" \
   -print -quit)"
 [[ -n "$isar_package" ]] || fail 'Could not locate the downloaded Isar Linux library.'
 cp "$isar_source/target/aarch64-unknown-linux-gnu/release/libisar.so" "$isar_package"
+
+isar_loader="$(find "$HOME/.pub-cache" \
+  -path '*isar_community-3.3.2/lib/src/native/isar_core.dart' \
+  -print -quit)"
+[[ -n "$isar_loader" ]] || fail 'Could not locate the Isar Dart loader.'
+perl -0pi -e 's/case Abi\.linuxX64:\n\s*return '\''libisar\.so'\'';/case Abi.linuxX64:\n      case Abi.linuxArm64:\n        return '\''libisar.so'\'';/' "$isar_loader"
+grep -q 'case Abi.linuxArm64:' "$isar_loader" || \
+  fail 'Could not enable Linux ARM64 in the Isar Dart loader.'
 
 flutter build linux --release
 

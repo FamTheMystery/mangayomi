@@ -17,7 +17,7 @@ The development host for this change is Windows, so `flutter doctor -v`, `flutte
 | Cargokit host selection | Linux previously used `arch` and treated every non-`aarch64` host as x86_64. | Could select the wrong target silently. | Fixed to use `uname -m` and fail closed |
 | GTK/WebKit | Linux CMake uses system GTK and plugins; WebKitGTK is a package dependency. | Requires ARM64 distro development/runtime packages. | Pending on target |
 | Media | The custom `media_kit_libs_video` package and system `libmpv` are architecture-sensitive. | Must inspect built bundle and `ldd` on ARM64. | Pending on target |
-| Isar | `isar_community_flutter_libs` 3.3.2 downloads an x86-64 `libisar.so` on Linux. | Build Isar Core 3.3.2 from source and replace it before Flutter packaging. | Fixed in ARM64 build script |
+| Isar | `isar_community_flutter_libs` 3.3.2 downloads an x86-64 `libisar.so`; its Dart loader also rejects `Abi.linuxArm64`. | Build Isar Core from source, replace the library, and patch the loader's local-name mapping during the ARM build. | Fixed in ARM64 build script |
 | Go torrent library | `go/build_go.sh` uses native `go build` for Linux, but the repository bundle can contain a stale x86-64 `.so`. | Must rebuild before Flutter packaging. | Fixed in ARM64 build script |
 | Packaging | Existing release workflow and Arch package are x86_64-specific. | Existing release artifacts are not ARM64 packages. | ARM64 scripts added; release publication pending |
 
