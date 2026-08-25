@@ -52,6 +52,7 @@ class _PlayerDecoderScreenState extends ConsumerState<PlayerDecoderScreen> {
                   ("videotoolbox-copy", "(iOS 9.0+)"),
                   ("nvdec", "(CUDA)"),
                   ("nvdec-copy", "(CUDA)"),
+                  ("v4l2m2m-copy", "(Linux Cedrus/V4L2)"),
                   ("mediacodec", "- HW (Android)"),
                   ("mediacodec-copy", "- HW+ (Android)"),
                   ("crystalhd", ""),

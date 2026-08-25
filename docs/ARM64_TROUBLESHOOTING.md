@@ -27,3 +27,5 @@ Mihon Android extensions call the local M-Extension-Server at `/dalvik`. On Linu
 ## Low memory
 
 Start with software video decoding and reduce application workload before attempting hardware acceleration. H618 hardware decoding depends on the kernel, FFmpeg/mpv build, and available V4L2/Cedrus support; the Mali GPU alone does not prove decoder support.
+
+The Orange Pi report exposes Cedrus as `/dev/video0` and mpv exposes `v4l2m2m-copy`. Linux now selects that mode when the saved decoder setting is still `auto`. Confirm actual use in mpv logs; a playing video alone is not proof of hardware decoding.

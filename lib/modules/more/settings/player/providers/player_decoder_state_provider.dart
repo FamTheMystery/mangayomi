@@ -18,13 +18,17 @@ final hwdecs = {
   "mediacodec": ["android"],
   "mediacodec-copy": ["android"],
   "crystalhd": ["all"],
+  "v4l2m2m-copy": ["linux"],
 };
 
 @riverpod
 class HwdecModeState extends _$HwdecModeState {
   @override
   String build({bool rawValue = false}) {
-    final hwdecMode = isar.settings.getSync(227)!.hwdecMode ?? "auto";
+    final configuredMode = isar.settings.getSync(227)!.hwdecMode ?? "auto";
+    final hwdecMode = Platform.isLinux && configuredMode == "auto"
+      ? "v4l2m2m-copy"
+      : configuredMode;
     if (rawValue) {
       return hwdecMode;
     }
