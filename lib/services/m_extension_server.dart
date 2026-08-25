@@ -56,10 +56,12 @@ class MExtensionServerPlatform {
           final jrePath = settings?.jrePath;
           final serverJarPath = settings?.extensionServerPath;
           if ((jrePath?.isEmpty ?? true) || (serverJarPath?.isEmpty ?? true)) {
+            _markServerUnavailable();
             return;
           }
           if (!await File(jrePath!).exists() ||
               !await File(serverJarPath!).exists()) {
+            _markServerUnavailable();
             return;
           }
           await MExtensionServer().startServer(
@@ -71,6 +73,18 @@ class MExtensionServerPlatform {
           await MExtensionServer().startServer(port);
         }
         final localBaseUrl = "http://127.0.0.1:$port";
+        var ready = false;
+        for (var attempt = 0; attempt < 20; attempt++) {
+          if (await _check(localBaseUrl)) {
+            ready = true;
+            break;
+          }
+          await Future<void>.delayed(const Duration(milliseconds: 250));
+        }
+        if (!ready) {
+          _markServerUnavailable();
+          return;
+        }
         if (Platform.isIOS) _iosActiveBaseUrl = localBaseUrl;
         ref.read(androidProxyServerStateProvider.notifier).set(localBaseUrl);
       }
@@ -79,6 +93,12 @@ class MExtensionServerPlatform {
         print(e);
       }
     }
+  }
+
+  void _markServerUnavailable() {
+    ref
+        .read(androidProxyServerStateProvider.notifier)
+        .set('http://127.0.0.1:0');
   }
 
   Future<void> stopServer() async {
