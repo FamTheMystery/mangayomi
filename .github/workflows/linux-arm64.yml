@@ -1,0 +1,281 @@
+name: Build Linux ARM64
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-linux-arm64:
+    name: Build Mangayomi for Linux ARM64
+    runs-on: ubuntu-24.04-arm
+
+    container:
+      image: arm64v8/debian:12
+
+    steps:
+      - name: Install build dependencies
+        run: |
+          set -e
+
+          echo "=== System ==="
+          uname -a
+
+          echo
+          echo "=== Architecture ==="
+          uname -m
+          dpkg --print-architecture
+
+          echo
+          echo "=== GLIBC ==="
+          ldd --version | head -1
+
+          echo
+          echo "=== Update package lists ==="
+          apt-get update
+
+          echo
+          echo "=== Install dependencies ==="
+          DEBIAN_FRONTEND=noninteractive apt-get install -y \
+            ca-certificates \
+            curl \
+            git \
+            wget \
+            unzip \
+            zip \
+            file \
+            xz-utils \
+            tar \
+            bzip2 \
+            build-essential \
+            clang \
+            cmake \
+            ninja-build \
+            pkg-config \
+            libgtk-3-dev \
+            libwebkit2gtk-4.1-dev \
+            libmpv-dev \
+            libblkid-dev \
+            liblzma-dev \
+            libjpeg-dev \
+            libpng-dev \
+            libavif-dev \
+            libsecret-1-dev \
+            libssl-dev \
+            libsqlite3-dev \
+            libstdc++6
+
+          echo
+          echo "=== Installed versions ==="
+          gcc --version
+          g++ --version
+          clang --version
+          cmake --version
+          ninja --version
+
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Show build environment
+        run: |
+          echo "=== OS ==="
+          cat /etc/os-release
+
+          echo
+          echo "=== Architecture ==="
+          uname -m
+          dpkg --print-architecture
+
+          echo
+          echo "=== GLIBC ==="
+          ldd --version | head -1
+
+          echo
+          echo "=== GLIBCXX versions ==="
+          strings /usr/lib/aarch64-linux-gnu/libstdc++.so.6 \
+            | grep GLIBCXX_ \
+            | sort -V \
+            | tail
+
+      - name: Setup Flutter
+        run: |
+          set -e
+
+          git clone \
+            https://github.com/flutter/flutter.git \
+            --depth 1 \
+            -b stable \
+            "$HOME/flutter"
+
+          echo "$HOME/flutter/bin" >> "$GITHUB_PATH"
+          echo "$HOME/flutter/bin/cache/dart-sdk/bin" >> "$GITHUB_PATH"
+
+          "$HOME/flutter/bin/flutter" --version
+
+          "$HOME/flutter/bin/flutter" config \
+            --enable-linux-desktop
+
+          "$HOME/flutter/bin/flutter" precache \
+            --linux
+
+      - name: Verify Flutter
+        run: |
+          flutter --version
+          flutter doctor -v
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: stable
+
+      - name: Verify Rust
+        run: |
+          rustc --version
+          cargo --version
+          rustup show
+
+      - name: Flutter pub get
+        run: |
+          set -e
+          flutter pub get
+
+      - name: Build Mangayomi
+        run: |
+          set -e
+
+          flutter build linux \
+            --release \
+            --verbose
+
+      - name: Verify build output
+        run: |
+          set -e
+
+          echo "=== Linux build directories ==="
+          find build/linux -maxdepth 6 -type d -print
+
+          echo
+          echo "=== Mangayomi executables ==="
+          find build/linux \
+            -type f \
+            -name mangayomi \
+            -exec file {} \;
+
+          echo
+          echo "=== GLIBC requirements ==="
+          find build/linux \
+            -type f \
+            -name mangayomi \
+            -exec sh -c 'echo "Checking: $1"; objdump -T "$1" | grep -o "GLIBC_[0-9.]*" | sort -Vu | tail' _ {} \;
+
+      - name: Locate Linux ARM64 bundle
+        id: bundle
+        run: |
+          set -e
+
+          BUNDLE="build/linux/arm64/release/bundle"
+
+          if [ ! -d "$BUNDLE" ]; then
+            echo "ERROR: Linux ARM64 bundle directory was not found:"
+            echo "$BUNDLE"
+            exit 1
+          fi
+
+          if [ ! -f "$BUNDLE/mangayomi" ]; then
+            echo "ERROR: Mangayomi executable was not found:"
+            echo "$BUNDLE/mangayomi"
+            exit 1
+          fi
+
+          echo "=== Bundle contents ==="
+          ls -lah "$BUNDLE"
+
+          echo
+          echo "=== Mangayomi executable ==="
+          file "$BUNDLE/mangayomi"
+
+          echo
+          echo "=== Architecture ==="
+          readelf -h "$BUNDLE/mangayomi" | grep -E \
+            "Class:|Machine:"
+
+          echo "bundle_dir=$BUNDLE" >> "$GITHUB_OUTPUT"
+
+      - name: Verify ARM64 executable
+        run: |
+          set -e
+
+          BUNDLE="${{ steps.bundle.outputs.bundle_dir }}"
+
+          echo "Checking executable:"
+          echo "$BUNDLE/mangayomi"
+
+          file "$BUNDLE/mangayomi"
+
+          echo
+          echo "=== ELF header ==="
+          readelf -h "$BUNDLE/mangayomi" | grep -E \
+            "Class:|Data:|Machine:|Type:"
+
+          echo
+          echo "=== Required GLIBC versions ==="
+          objdump -T "$BUNDLE/mangayomi" \
+            | grep -o "GLIBC_[0-9.]*" \
+            | sort -Vu \
+            | tail -20 || true
+
+          echo
+          echo "=== Required GLIBCXX versions ==="
+          objdump -T "$BUNDLE/mangayomi" \
+            | grep -o "GLIBCXX_[0-9.]*" \
+            | sort -Vu \
+            | tail -20 || true
+
+      - name: Check bundled libraries
+        run: |
+          set -e
+
+          BUNDLE="${{ steps.bundle.outputs.bundle_dir }}"
+
+          echo "=== Bundled libraries ==="
+          find "$BUNDLE" -maxdepth 2 -type f \
+            \( -name "*.so" -o -name "*.so.*" \) \
+            -print
+
+          echo
+          echo "=== Flutter bundle size ==="
+          du -sh "$BUNDLE"
+
+      - name: Create ARM64 ZIP
+        run: |
+          set -e
+
+          BUNDLE="${{ steps.bundle.outputs.bundle_dir }}"
+
+          mkdir -p dist
+
+          cd "$BUNDLE"
+
+          zip -r \
+            "$GITHUB_WORKSPACE/dist/Mangayomi-${GITHUB_SHA}-linux-arm64.zip" \
+            .
+
+      - name: Verify ZIP contents
+        run: |
+          set -e
+
+          echo "=== Artifact ==="
+          ls -lh dist/
+
+          echo
+          echo "=== ZIP contents ==="
+          unzip -l dist/*.zip | head -100
+
+          echo
+          echo "=== ZIP size ==="
+          du -h dist/*.zip
+
+      - name: Upload ARM64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Mangayomi-linux-arm64
+          path: dist/Mangayomi-*-linux-arm64.zip
+          if-no-files-found: error
