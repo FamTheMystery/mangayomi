@@ -1,0 +1,72 @@
+name: Build Linux ARM64
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref to build
+        required: false
+        default: main
+        type: string
+  push:
+    branches: [main]
+    paths:
+      - 'lib/**'
+      - 'linux/**'
+      - 'rust/**'
+      - 'rust_builder/**'
+      - 'scripts/build-linux-arm64.sh'
+      - 'scripts/check-arm64.sh'
+      - 'pubspec.yaml'
+      - 'pubspec.lock'
+      - '.github/workflows/build-linux-arm64.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Native Linux ARM64
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 60
+    steps:
+      - name: Checkout selected ref
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.ref }}
+
+      - name: Verify runner architecture
+        run: test "$(uname -m)" = aarch64
+
+      - name: Install Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            webkit2gtk-4.1 clang cmake ninja-build pkg-config \
+            libgtk-3-dev mpv libmpv-dev dpkg-dev libblkid-dev \
+            liblzma-dev libjpeg-dev libpng-dev libavif-dev libsecret-1-dev
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install bridge generator
+        run: cargo install flutter_rust_bridge_codegen
+
+      - name: Build and verify
+        run: bash scripts/build-linux-arm64.sh
+
+      - name: Upload ARM64 packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: mangayomi-linux-arm64-${{ github.sha }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            build/linux/arm64/release/Mangayomi-linux-arm64.tar.gz
+            build/linux/arm64/release/mangayomi-linux-arm64.deb

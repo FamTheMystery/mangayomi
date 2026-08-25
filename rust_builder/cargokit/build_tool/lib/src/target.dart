@@ -111,14 +111,16 @@ class Target {
   /// Returns buildable targets on current host platform ignoring Android targets.
   static List<Target> buildableTargets() {
     if (Platform.isLinux) {
-      // Right now we don't support cross-compiling on Linux. So we just return
-      // the host target.
-      final arch = runCommand('arch', []).stdout as String;
-      if (arch.trim() == 'aarch64') {
-        return [Target.forRustTriple('aarch64-unknown-linux-gnu')!];
-      } else {
-        return [Target.forRustTriple('x86_64-unknown-linux-gnu')!];
-      }
+      // Linux builds are native-only. Never silently select x86_64 for an
+      // unsupported host architecture.
+      final arch = runCommand('uname', ['-m']).stdout as String;
+      final triple = switch (arch.trim()) {
+        'aarch64' | 'arm64' => 'aarch64-unknown-linux-gnu',
+        'x86_64' | 'amd64' => 'x86_64-unknown-linux-gnu',
+        _ => throw UnsupportedError(
+            'Unsupported Linux architecture: ${arch.trim()}'),
+      };
+      return [Target.forRustTriple(triple)!];
     }
     return all.where((target) {
       if (Platform.isWindows) {
