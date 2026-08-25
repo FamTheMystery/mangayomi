@@ -58,7 +58,7 @@ class _ExtensionServerScreenState extends ConsumerState<ExtensionServerScreen> {
     });
   }
 
-  bool get _requiresJre => !Platform.isIOS;
+  bool get _requiresJre => !Platform.isIOS && !Platform.isLinux;
 
   bool get _showExtensionServerSection => !isMobile;
 

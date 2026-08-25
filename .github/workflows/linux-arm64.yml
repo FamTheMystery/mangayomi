@@ -61,7 +61,8 @@ jobs:
             libsecret-1-dev \
             libssl-dev \
             libsqlite3-dev \
-            libstdc++6
+            libstdc++6 \
+            default-jre-headless
 
           echo
           echo "=== Installed versions ==="

@@ -66,7 +66,9 @@ String? extensionServerAssetNameForCurrentPlatform() {
     return abi == Abi.windowsX64 ? 'windows-x64-bundle.zip' : null;
   }
   if (Platform.isLinux) {
-    return abi == Abi.linuxX64 ? 'linux-x64-bundle.zip' : null;
+    return abi == Abi.linuxX64 || abi == Abi.linuxArm64
+        ? 'linux-x64-bundle.zip'
+        : null;
   }
   if (Platform.isMacOS) {
     return switch (abi) {

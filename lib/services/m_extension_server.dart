@@ -53,13 +53,20 @@ class MExtensionServerPlatform {
         await server.close();
         if (isDesktop) {
           final settings = isar.settings.getSync(227);
-          final jrePath = settings?.jrePath;
+            final configuredJrePath = settings?.jrePath;
+            final jrePath = Platform.isLinux &&
+                (configuredJrePath?.isEmpty ?? true)
+              ? 'java'
+              : configuredJrePath;
           final serverJarPath = settings?.extensionServerPath;
           if ((jrePath?.isEmpty ?? true) || (serverJarPath?.isEmpty ?? true)) {
             _markServerUnavailable();
             return;
           }
-          if (!await File(jrePath!).exists() ||
+            final javaAvailable = Platform.isLinux && jrePath == 'java'
+              ? (await Process.run('java', ['-version'])).exitCode == 0
+              : await File(jrePath!).exists();
+            if (!javaAvailable ||
               !await File(serverJarPath!).exists()) {
             _markServerUnavailable();
             return;

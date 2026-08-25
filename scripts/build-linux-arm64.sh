@@ -76,7 +76,7 @@ Section: video
 Priority: optional
 Architecture: arm64
 Maintainer: Mangayomi contributors
-Depends: libgtk-3-0, libwebkit2gtk-4.1-0, libmpv2
+Depends: default-jre-headless, libgtk-3-0, libwebkit2gtk-4.1-0, libmpv2
 Description: Manga reader and anime streaming application
 EOF
   mkdir -p "$deb_root/usr/bin"
