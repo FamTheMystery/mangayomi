@@ -53,18 +53,24 @@ else
 fi
 
 section 'Summary'
-if command -v glxinfo >/dev/null; then
+renderer=''
+if command -v glxinfo >/dev/null && [[ -n "${DISPLAY:-}" ]]; then
   renderer="$(glxinfo -B 2>/dev/null | sed -n 's/^OpenGL renderer string: //p')"
-  printf 'OpenGL renderer: %s\n' "${renderer:-unknown}"
-  case "$renderer" in
-    *llvmpipe*|*softpipe*|*Software*)
-      printf 'WARNING: software OpenGL renderer detected.\n'
-      ;;
-    *Mali*|*Panfrost*)
-      printf 'GPU renderer detected.\n'
-      ;;
-    *)
-      printf 'GPU renderer could not be confirmed from the renderer string.\n'
-      ;;
-  esac
+elif command -v eglinfo >/dev/null; then
+  renderer="$(eglinfo -B 2>/dev/null | sed -n 's/^OpenGL .* renderer: //p' | head -n 1)"
 fi
+printf 'OpenGL renderer: %s\n' "${renderer:-unavailable in the current session}"
+if [[ -z "${DISPLAY:-}" && -z "${WAYLAND_DISPLAY:-}" ]]; then
+  printf 'NOTE: no graphical session is available; run this from the desktop session for GPU validation.\n'
+fi
+case "$renderer" in
+  *llvmpipe*|*softpipe*|*Software*)
+    printf 'WARNING: software OpenGL renderer detected.\n'
+    ;;
+  *Mali*|*Panfrost*)
+    printf 'GPU renderer detected.\n'
+    ;;
+  *)
+    printf 'GPU renderer could not be confirmed from the renderer string.\n'
+    ;;
+esac
