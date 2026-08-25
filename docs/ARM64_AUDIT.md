@@ -18,12 +18,12 @@ The development host for this change is Windows, so `flutter doctor -v`, `flutte
 | GTK/WebKit | Linux CMake uses system GTK and plugins; WebKitGTK is a package dependency. | Requires ARM64 distro development/runtime packages. | Pending on target |
 | Media | The custom `media_kit_libs_video` package and system `libmpv` are architecture-sensitive. | Must inspect built bundle and `ldd` on ARM64. | Pending on target |
 | Isar | `isar_community_flutter_libs` is native-code dependent. | Must confirm its Linux ARM64 asset during `flutter pub get/build`. | Pending on target |
-| Go torrent library | `go/build_go.sh` uses native `go build` for Linux, without an x86 override. | Builds for the host architecture. | Likely compatible; verify with `file` |
+| Go torrent library | `go/build_go.sh` uses native `go build` for Linux, but the repository bundle can contain a stale x86-64 `.so`. | Must rebuild before Flutter packaging. | Fixed in ARM64 build script |
 | Packaging | Existing release workflow and Arch package are x86_64-specific. | Existing release artifacts are not ARM64 packages. | ARM64 scripts added; release publication pending |
 
 ## Architecture-sensitive search results
 
-- Linux CMake installs `libmtorrentserver.so` from `linux/bundle/lib`.
+- Linux CMake installs `libmtorrentserver.so` from `linux/bundle/lib`; the ARM64 script overwrites that location with a native Go build before Flutter packaging.
 - Release workflow uses `build/linux/x64`, an x86_64 linuxdeploy AppImage, and RPM `BuildArch: x86_64`.
 - Arch packaging declares `arch=('x86_64')`.
 - Extension download selection currently returns `linux-x64-bundle.zip` only. The latest upstream release checked on 2026-08-25 has no Linux ARM64 asset, so this remains an upstream blocker; never substitute the x64 archive.

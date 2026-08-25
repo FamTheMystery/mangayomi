@@ -11,6 +11,7 @@ fail() {
 
 command -v flutter >/dev/null || fail 'Flutter is required.'
 command -v cargo >/dev/null || fail 'Rust/Cargo is required.'
+command -v go >/dev/null || fail 'Go 1.25 or newer is required.'
 command -v dpkg-deb >/dev/null || fail 'dpkg-deb is required for Debian packaging.'
 
 host_arch="$(uname -m)"
@@ -20,6 +21,10 @@ host_arch="$(uname -m)"
 flutter_linux="$(flutter config 2>/dev/null | grep -E 'enable-linux-desktop:|enable-linux-desktop' || true)"
 printf 'Building Mangayomi for native Linux ARM64 (%s)\n' "$host_arch"
 printf '%s\n' "$flutter_linux"
+
+printf 'Building native torrent server (%s)\n' "$(go version)"
+go build -C go -buildmode=c-shared -ldflags='-s -w' -trimpath \
+  -o ../linux/bundle/lib/libmtorrentserver.so ./binding/desktop
 
 flutter pub get
 cargo build --manifest-path rust/Cargo.toml --target aarch64-unknown-linux-gnu --release
