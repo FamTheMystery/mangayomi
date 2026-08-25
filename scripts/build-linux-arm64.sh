@@ -12,6 +12,7 @@ fail() {
 command -v flutter >/dev/null || fail 'Flutter is required.'
 command -v cargo >/dev/null || fail 'Rust/Cargo is required.'
 command -v go >/dev/null || fail 'Go 1.25 or newer is required.'
+command -v git >/dev/null || fail 'Git is required to build Isar Core.'
 command -v dpkg-deb >/dev/null || fail 'dpkg-deb is required for Debian packaging.'
 
 host_arch="$(uname -m)"
@@ -28,6 +29,20 @@ go build -C go -buildmode=c-shared -ldflags='-s -w' -trimpath \
 
 flutter pub get
 cargo build --manifest-path rust/Cargo.toml --target aarch64-unknown-linux-gnu --release
+
+printf 'Building Isar Core 3.3.2 for native ARM64\n'
+isar_source="${TMPDIR:-/tmp}/isar-community-3.3.2"
+rm -rf "$isar_source"
+git clone --depth 1 --branch 3.3.2 \
+  https://github.com/isar-community/isar-community.git "$isar_source"
+cargo build --manifest-path "$isar_source/packages/isar_core_ffi/Cargo.toml" \
+  --target aarch64-unknown-linux-gnu --release
+isar_package="$(find "$HOME/.pub-cache" \
+  -path '*isar_community_flutter_libs-3.3.2/linux/libisar.so' \
+  -print -quit)"
+[[ -n "$isar_package" ]] || fail 'Could not locate the downloaded Isar Linux library.'
+cp "$isar_source/target/aarch64-unknown-linux-gnu/release/libisar.so" "$isar_package"
+
 flutter build linux --release
 
 bundle="build/linux/arm64/release/bundle"
@@ -45,7 +60,7 @@ if command -v dpkg-deb >/dev/null; then
   rm -rf "$deb_root"
   mkdir -p "$deb_root/DEBIAN" "$deb_root/opt/mangayomi"
   cp -a "$bundle/." "$deb_root/opt/mangayomi/"
-  cat > "$deb_root/DEBIAN/control" <<'EOF'
+  cat > "$deb_root/DEBIAN/control" <<EOF
 Package: mangayomi
 Version: ${version}
 Section: video

@@ -126,6 +126,12 @@ jobs:
         with:
           toolchain: stable
 
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.25.x'
+          cache-dependency-path: go/go.sum
+
       - name: Verify Rust
         run: |
           rustc --version
@@ -140,10 +146,7 @@ jobs:
       - name: Build Mangayomi
         run: |
           set -e
-
-          flutter build linux \
-            --release \
-            --verbose
+          bash scripts/build-linux-arm64.sh
 
       - name: Verify build output
         run: |
