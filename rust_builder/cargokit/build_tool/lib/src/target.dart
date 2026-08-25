@@ -114,12 +114,13 @@ class Target {
       // Linux builds are native-only. Never silently select x86_64 for an
       // unsupported host architecture.
       final arch = runCommand('uname', ['-m']).stdout as String;
-      final triple = switch (arch.trim()) {
-        'aarch64' | 'arm64' => 'aarch64-unknown-linux-gnu',
-        'x86_64' | 'amd64' => 'x86_64-unknown-linux-gnu',
-        _ => throw UnsupportedError(
-            'Unsupported Linux architecture: ${arch.trim()}'),
-      };
+        final normalizedArch = arch.trim();
+        final triple = normalizedArch == 'aarch64' || normalizedArch == 'arm64'
+          ? 'aarch64-unknown-linux-gnu'
+          : normalizedArch == 'x86_64' || normalizedArch == 'amd64'
+            ? 'x86_64-unknown-linux-gnu'
+            : throw UnsupportedError(
+              'Unsupported Linux architecture: $normalizedArch');
       return [Target.forRustTriple(triple)!];
     }
     return all.where((target) {
