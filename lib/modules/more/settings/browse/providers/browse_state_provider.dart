@@ -268,10 +268,13 @@ final isExtensionServerInstalledStreamProvider = StreamProvider<bool>((
   )) {
     final jrePath = settings?.jrePath ?? '';
     final serverPath = settings?.extensionServerPath ?? '';
-    if (jrePath.isEmpty || serverPath.isEmpty) {
+    final jreAvailable = Platform.isLinux
+        ? Process.runSync('java', ['-version']).exitCode == 0
+        : jrePath.isNotEmpty && File(jrePath).existsSync();
+    if (!jreAvailable || serverPath.isEmpty) {
       yield false;
     } else {
-      yield File(jrePath).existsSync() && File(serverPath).existsSync();
+      yield File(serverPath).existsSync();
     }
   }
 });

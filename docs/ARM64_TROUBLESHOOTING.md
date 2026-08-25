@@ -22,7 +22,7 @@ Run `bash scripts/check-orange-pi-acceleration.sh` on the Orange Pi. `glxinfo -B
 
 ## Mihon source search
 
-Mihon Android extensions call the local M-Extension-Server at `/dalvik`. On Linux desktop, Mangayomi uses the system `java` executable and needs the extension-server JAR. On ARM64, the download may use the upstream x64 bundle only as a source for its architecture-independent JAR; its x86-64 JRE is never executed or packaged. If Java/JAR is missing or the server does not become reachable, the app clears the proxy URL instead of leaving a misleading `127.0.0.1:8080` endpoint.
+Mihon Android extensions call the local M-Extension-Server at `/dalvik`. On Linux desktop, Mangayomi uses the system `java` executable and needs the extension-server JAR. On ARM64, the download may use the upstream x64 bundle only as a source for its architecture-independent JAR; its x86-64 JRE is never executed or packaged. The browse warning checks system Java on Linux, and disappears only when the JAR exists and the server becomes reachable.
 
 ## Low memory
 
