@@ -15,6 +15,7 @@ command -v go >/dev/null || fail 'Go 1.25 or newer is required.'
 command -v git >/dev/null || fail 'Git is required to build Isar Core.'
 command -v perl >/dev/null || fail 'Perl is required to patch Isar ARM64 loading.'
 command -v dpkg-deb >/dev/null || fail 'dpkg-deb is required for Debian packaging.'
+command -v patch >/dev/null || fail 'patch is required to patch media_kit_video.'
 
 host_arch="$(uname -m)"
 [[ "$host_arch" == "aarch64" || "$host_arch" == "arm64" ]] || \
@@ -35,8 +36,11 @@ media_kit_video_source="$(find "$HOME/.pub-cache/git" \
   -print -quit)"
 [[ -n "$media_kit_video_source" ]] || fail 'Could not locate media_kit_video Linux sources.'
 media_kit_root="${media_kit_video_source%/media_kit_video/linux/video_output.cc}"
-patch -d "$media_kit_root" -p1 --forward --batch \
-  < "$project_root/scripts/media-kit-linux-egl.patch" || \
+git -C "$media_kit_root" apply --check \
+  "$project_root/scripts/media-kit-linux-egl.patch" || \
+  fail 'Linux media-kit EGL patch does not match the resolved source.'
+git -C "$media_kit_root" apply \
+  "$project_root/scripts/media-kit-linux-egl.patch" || \
   fail 'Could not apply the Linux media-kit EGL patch.'
 
 cargo build --manifest-path rust/Cargo.toml --target aarch64-unknown-linux-gnu --release
