@@ -220,6 +220,9 @@ class _AnimeStreamPageState extends riv.ConsumerState<AnimeStreamPage>
         _AlwaysOnTopStateMixin,
         TickerProviderStateMixin,
         WidgetsBindingObserver {
+  late final useExternalPlayer =
+      Platform.isLinux &&
+      Platform.environment['MANGAYOMI_EXTERNAL_PLAYER']?.isNotEmpty == true;
   late final GlobalKey<VideoState> _key = GlobalKey<VideoState>();
   late final useLibass = ref.read(useLibassStateProvider);
   late final useMpvConfig = ref.read(useMpvConfigStateProvider);
@@ -841,6 +844,12 @@ mp.register_script_message('call_button_${button.id}_long', button${button.id}lo
   @override
   void initState() {
     super.initState();
+    if (useExternalPlayer) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _launchExternalPlayer(_video.value!);
+      });
+      return;
+    }
     _watchStopwatch.start();
     _controller = VideoController(
       _player,
@@ -963,6 +972,24 @@ mp.register_script_message('call_button_${button.id}_long', button${button.id}lo
     }
   }
 
+  Future<void> _launchExternalPlayer(VideoPrefs prefs) async {
+    final player = Platform.environment['MANGAYOMI_EXTERNAL_PLAYER']!;
+    final args = <String>[
+      '--vo=gpu',
+      '--hwdec=v4l2m2m-copy',
+      if (prefs.headers case final headers?)
+        '--http-header-fields=${headers.entries.map((e) => '${e.key}: ${e.value}').join(',')}',
+      if (_streamController.getCurrentPosition() > Duration.zero)
+        '--start=${_streamController.getCurrentPosition().inSeconds}',
+      prefs.videoTrack!.id,
+    ];
+    try {
+      await Process.start(player, args, mode: ProcessStartMode.detached);
+    } catch (error) {
+      if (kDebugMode) print('External player failed to start: $error');
+    }
+  }
+
   Future<void> _loadAndroidFont() async {
     if (Platform.isAndroid && useLibass) {
       try {
@@ -1019,6 +1046,12 @@ mp.register_script_message('call_button_${button.id}_long', button${button.id}lo
 
   @override
   void dispose() {
+    if (useExternalPlayer) {
+      _video.dispose();
+      _streamController.keepAliveLink?.close();
+      super.dispose();
+      return;
+    }
     _revealControls.dispose();
     _tvVideoFocus.dispose();
     _tvPanelFocus.dispose();
@@ -2352,6 +2385,9 @@ mp.register_script_message('call_button_${button.id}_long', button${button.id}lo
   }
 
   Widget _videoPlayer(BuildContext context) {
+    if (useExternalPlayer) {
+      return const Center(child: Text('Playing in external player'));
+    }
     final fit = _fit.value;
     _resize(fit);
     final enableAniSkip = ref.read(enableAniSkipStateProvider);

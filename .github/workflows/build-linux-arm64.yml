@@ -73,6 +73,14 @@ jobs:
       - name: Build and verify
         run: bash scripts/build-linux-arm64.sh
 
+      - name: Verify external mpv player support
+        run: |
+          set -e
+          command -v mpv
+          mpv --version | head -n 1
+          grep -a -q 'MANGAYOMI_EXTERNAL_PLAYER' lib/modules/anime/anime_player_view.dart
+          echo 'External playback: MANGAYOMI_EXTERNAL_PLAYER=mpv mangayomi'
+
       - name: Upload ARM64 packages
         uses: actions/upload-artifact@v4
         with:

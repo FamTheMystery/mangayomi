@@ -81,7 +81,7 @@ class MExtensionServerPlatform {
         }
         final localBaseUrl = "http://127.0.0.1:$port";
         var ready = false;
-        for (var attempt = 0; attempt < 20; attempt++) {
+        for (var attempt = 0; attempt < 120; attempt++) {
           if (await _check(localBaseUrl)) {
             ready = true;
             break;
@@ -96,6 +96,7 @@ class MExtensionServerPlatform {
         ref.read(androidProxyServerStateProvider.notifier).set(localBaseUrl);
       }
     } catch (e) {
+      _markServerUnavailable();
       if (kDebugMode) {
         print(e);
       }

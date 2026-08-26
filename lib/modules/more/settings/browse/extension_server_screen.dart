@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:ffi';
 import 'dart:io';
 
 import 'package:archive/archive.dart';
@@ -59,6 +60,9 @@ class _ExtensionServerScreenState extends ConsumerState<ExtensionServerScreen> {
   }
 
   bool get _requiresJre => !Platform.isIOS && !Platform.isLinux;
+
+  bool get _isLinuxArm64 =>
+      Platform.isLinux && Abi.current() == Abi.linuxArm64;
 
   bool get _showExtensionServerSection => !isMobile;
 
@@ -540,10 +544,20 @@ class _ExtensionServerScreenState extends ConsumerState<ExtensionServerScreen> {
     botToast(l10n.extension_server_jar_imported);
   }
 
-  Future<void> _extractArchive(File archiveFile, Directory installDir) async {
+  Future<void> _extractArchive(
+    File archiveFile,
+    Directory installDir, {
+    bool jarOnly = false,
+  }) async {
     final bytes = await archiveFile.readAsBytes();
     final archive = ZipDecoder().decodeBytes(bytes);
     for (final file in archive.files) {
+      if (jarOnly &&
+          (!file.isFile ||
+              !path.basename(file.name).startsWith(extensionServerJarPrefix) ||
+              !file.name.endsWith('.jar'))) {
+        continue;
+      }
       final outputPath = path.normalize(path.join(installDir.path, file.name));
       if (!path.isWithin(installDir.path, outputPath) &&
           outputPath != installDir.path) {
@@ -807,7 +821,11 @@ class _ExtensionServerScreenState extends ConsumerState<ExtensionServerScreen> {
     dynamic l10n,
   ) async {
     await _prepareInstallDirectory(installDir);
-    await _extractArchive(bundleZip, installDir);
+    await _extractArchive(
+      bundleZip,
+      installDir,
+      jarOnly: _isLinuxArm64,
+    );
     final resolvedPaths = await _resolvePathsInDirectory(installDir);
     if (!_hasResolvedPaths(resolvedPaths)) {
       throw Exception(l10n.downloaded_bundle_missing_expected_files);
