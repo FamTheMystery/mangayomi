@@ -205,7 +205,8 @@ class _StartupErrorApp extends StatelessWidget {
 Future<void> _postLaunchInit(StorageProvider storage) async {
   await AppLogger.init();
   unawaited(maybeShowCrashBanner());
-  unawaited(MDownloader.initializeIsolatePool(poolSize: 6));
+  final poolSize = Platform.numberOfProcessors <= 4 ? 2 : 6;
+  unawaited(MDownloader.initializeIsolatePool(poolSize: poolSize));
   final hivePath = isApple ? "databases" : p.join("Mangayomi", "databases");
   await Hive.initFlutter(Platform.isAndroid ? "" : hivePath);
   Hive.registerAdapter(TrackSearchAdapter());

@@ -52,14 +52,17 @@ dependencies:
     git:
       url: https://github.com/Schnitzel5/media-kit.git
       path: media_kit
+      ref: 01e5a092f7304d2a76fe1b45a0b45604475b29d7
   media_kit_video:
     git:
       url: https://github.com/Schnitzel5/media-kit.git
       path: media_kit_video
+      ref: 01e5a092f7304d2a76fe1b45a0b45604475b29d7
   media_kit_libs_video:
     git:
       url: https://github.com/Schnitzel5/media-kit.git
       path: libs/universal/media_kit_libs_video
+      ref: 01e5a092f7304d2a76fe1b45a0b45604475b29d7
   crypto: ^3.0.7
   cupertino_icons: ^1.0.9
   window_manager: ^0.5.1
