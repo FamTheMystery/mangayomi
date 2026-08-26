@@ -1,0 +1,54 @@
+diff --git a/media_kit_video/linux/video_output.cc b/media_kit_video/linux/video_output.cc
+index 0000000..0000000 100644
+--- a/media_kit_video/linux/video_output.cc
++++ b/media_kit_video/linux/video_output.cc
+@@ -151,9 +151,33 @@ VideoOutput* video_output_new(FlTextureRegistrar* texture_registrar,
+   if (self->configuration.enable_hardware_acceleration) {
+     // Get Flutter's current EGL display (DO NOT share context)
+     EGLDisplay flutter_display = eglGetCurrentDisplay();
+     EGLContext flutter_context = eglGetCurrentContext();
+     EGLSurface flutter_draw_surface = eglGetCurrentSurface(EGL_DRAW);
+     EGLSurface flutter_read_surface = eglGetCurrentSurface(EGL_READ);
++    EGLDisplay saved_display = flutter_display;
++    EGLContext saved_context = flutter_context;
++    EGLSurface saved_draw_surface = flutter_draw_surface;
++    EGLSurface saved_read_surface = flutter_read_surface;
++    GdkGLContext* fallback_context = NULL;
++    GError* fallback_error = NULL;
++
++    if (flutter_display == EGL_NO_DISPLAY ||
++        flutter_context == EGL_NO_CONTEXT) {
++      GdkWindow* window = gtk_widget_get_window(GTK_WIDGET(view));
++      if (window != NULL) {
++        fallback_context = gdk_window_create_gl_context(window, &fallback_error);
++        if (fallback_error == NULL) {
++          gdk_gl_context_realize(fallback_context, &fallback_error);
++        }
++        if (fallback_error == NULL) {
++          gdk_gl_context_make_current(fallback_context);
++          flutter_display = eglGetCurrentDisplay();
++          flutter_context = eglGetCurrentContext();
++          flutter_draw_surface = eglGetCurrentSurface(EGL_DRAW);
++          flutter_read_surface = eglGetCurrentSurface(EGL_READ);
++        }
++      }
++    }
+ 
+     if (flutter_display != EGL_NO_DISPLAY &&
+         flutter_context != EGL_NO_CONTEXT) {
+@@ -258,5 +286,13 @@ VideoOutput* video_output_new(FlTextureRegistrar* texture_registrar,
+ 
+             // Restore Flutter's context
+-            eglMakeCurrent(flutter_display, flutter_draw_surface,
+-                           flutter_read_surface, flutter_context);
++            if (saved_context != EGL_NO_CONTEXT) {
++              eglMakeCurrent(saved_display, saved_draw_surface,
++                             saved_read_surface, saved_context);
++            } else {
++              eglMakeCurrent(EGL_NO_DISPLAY, EGL_NO_SURFACE, EGL_NO_SURFACE,
++                             EGL_NO_CONTEXT);
++            }
++            if (fallback_context != NULL) {
++              g_object_unref(fallback_context);
++            }
+           } else {

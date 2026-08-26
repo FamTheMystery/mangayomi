@@ -29,6 +29,16 @@ go build -C go -buildmode=c-shared -ldflags='-s -w' -trimpath \
   -o ../linux/bundle/lib/libmtorrentserver.so ./binding/desktop
 
 flutter pub get
+
+media_kit_video_source="$(find "$HOME/.pub-cache/git" \
+  -path '*media_kit_video/linux/video_output.cc' \
+  -print -quit)"
+[[ -n "$media_kit_video_source" ]] || fail 'Could not locate media_kit_video Linux sources.'
+media_kit_root="${media_kit_video_source%/media_kit_video/linux/video_output.cc}"
+patch -d "$media_kit_root" -p1 --forward --batch \
+  < "$project_root/scripts/media-kit-linux-egl.patch" || \
+  fail 'Could not apply the Linux media-kit EGL patch.'
+
 cargo build --manifest-path rust/Cargo.toml --target aarch64-unknown-linux-gnu --release
 
 printf 'Building Isar Core 3.3.2 for native ARM64\n'
